@@ -1,0 +1,230 @@
+<!doctype html>
+<html>
+<head>
+		<meta charset=utf-8>
+		<title>Interactive Mural Mobile Front-End Interface</title>
+		<style>
+			body { margin: 0; }
+			canvas { width: 100%; height: 100% }
+		</style>
+	</head>
+<body>
+<script src="build/three.js"></script>
+<script src="js/QuickHull.js"></script>
+<script src="js/geometries/ConvexGeometry.js"></script>
+<script src="js/Detector.js"></script>
+<!-- <script src="build/three.min.js"></script> -->
+<!-- <script src="js/libs/stats.min.js"></script> -->
+<!-- <script src="js/controls/OrbitControls.js"></script> -->
+<!-- <script src="js/Quaternion.js"></script> -->
+<script>
+// <![CDATA[
+	if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+
+	var isMobile = navigator.userAgent.match(/(iPhone|iPod|iPad|Android)/);
+	if (isMobile != null) {
+		// window.addEventListener("deviceorientation", function(event){
+		// 	//Displays Motion Data on the page
+    //
+		// 	// socket.emit('chat message', " X:" + Math.round(event.alpha) + ", Y:" + Math.round(event.beta) + ", Z:" + Math.round(event.gamma));
+		// 	orientation(event);
+    //
+		// 	// if (prevX != event.alpha){
+		// 	//
+		// 	// }
+		// 	// socket.emit('chat message', " X:" + Math.round(event.alpha) + ", Y:" + Math.round(event.beta) + ", Z:" + Math.round(event.gamma));
+		// 	// var element = document.getElementById("all");
+		// }, false);
+		// function orientation(event) {
+		// 	//Displays motion data in real time on table element
+		// 	// document.getElementById("orientationX").textContent = Math.round(event.alpha)
+		// 	// document.getElementById("orientationY").textContent = Math.round(event.beta)
+		// 	// document.getElementById("orientationZ").textContent = Math.round(event.gamma)
+		// 	console.log("X: " + Math.round(event.alpha) + " Y: " + Math.round(event.beta) + " Z: " + Math.round(event.gamma));
+		// 	//To record previous orientation data
+		// 	//Pushes motion data on separate arrays
+		// 	// historicOrientation["x"].push(event.alpha)
+		// 	// historicOrientation["y"].push(event.beta)
+		// 	// historicOrientation["z"].push(event.gamma)
+		// }
+
+	// Set up the scene, camera, and renderer as global variables.
+	let group, group2;
+	var camera, scene, renderer;
+	var speedX = 0.004;
+	var speedY = 0.004;
+	// var speedY = 0.01;
+	// var speedX = 0.01;
+	var distanceX = 0.01;
+	var distanceY = 0.01;
+
+	var currentRotX = 0.001;
+	var currentRotY = 0.001;
+
+	const origin = new THREE.Vector3(0, 0, 0);
+	let fromRotation;
+	let toRotation;
+
+	let angle = 0;
+
+
+	init();
+	animate();
+
+
+  // Sets up the scene.
+  function init() {
+    // Create the scene and set the scene size.
+    scene = new THREE.Scene();
+
+		// Create a renderer and add it to the DOM.
+    renderer = new THREE.WebGLRenderer({antialias:true});
+
+		renderer.setPixelRatio( window.devicePixelRatio );
+		renderer.setSize( window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+		// Create a camera, zoom it out from the model a bit, and add it to the scene.
+    camera = new THREE.PerspectiveCamera(25, window.innerWidth / window.innerHeight/1.25, 0.5, 300 );
+		//FOV (field of vision - angle), Aspect (aspect ratio by dividing width and height), Near (the point at which the camera begins to render), Far (anything past beyond this is not rendered)
+    camera.position.set(20,0,100); // x, y, z - distance
+		camera.lookAt(origin); //added
+    scene.add(camera);
+
+		// Set the background color of the scene.
+		renderer.setClearColor(0xccdfff, 1);
+
+		// Create a light, set its position, and add it to the scene.
+		var light = new THREE.PointLight( 0xffffff, 1 );
+		camera.add( light );
+
+		// Add OrbitControls so that we can pan around with the mouse.
+    // controls = new THREE.OrbitControls(camera, renderer.domElement);
+		// controls.minDistance = 1;
+		// controls.maxDistance = 200;
+		// controls.maxPolarAngle = Math.PI / 2;
+
+		scene.add( new THREE.AmbientLight( 0x222222 ) );
+
+		// Helper
+		// scene.add( new THREE.AxesHelper( 20 ) );
+		// scene.add( new THREE.GridHelper(100, 10));
+
+		group = new THREE.Group();
+		scene.add( group );
+
+		// points
+		var pointsGeometry = new THREE.IcosahedronGeometry( 5 );
+
+		// convex hull
+		var meshMaterial = new THREE.MeshLambertMaterial( {
+			color: 0x5d98f7,
+			opacity: 0.8,
+			transparent: true
+		} );
+
+		var meshGeometry = new THREE.ConvexBufferGeometry( pointsGeometry.vertices );
+
+		var mesh = new THREE.Mesh( meshGeometry, meshMaterial );
+		mesh.material.side = THREE.BackSide; // back faces
+		mesh.renderOrder = 0;
+		group.add( mesh );
+
+		var mesh = new THREE.Mesh( meshGeometry, meshMaterial.clone() );
+		mesh.material.side = THREE.FrontSide; // front faces
+		mesh.renderOrder = 1;
+		group.add( mesh );
+
+		group2 = new THREE.Group();
+		group2 = group.clone();
+		group2.position.y = -12;
+		scene.add(group2);
+
+		//added
+		// var qm = new THREE.Quaternion();
+		// THREE.Quaternion.slerp(camera.quaternion, group, qm, 0.07);
+		// camera.quaternion = qm;
+		// camera.quaternion.normalize();
+		// fromRotation = new THREE.Quaternion();
+		// fromRotation.copy(group.quaternion);
+		// toRotation = new THREE.Quaternion();
+	  // const axisNormalised = new THREE.Vector3(1, 1, 1).normalize();
+	  // const angle = Math.PI;
+	  // toRotation.setFromAxisAngle(axisNormalised, angle);
+
+		// resize
+		window.addEventListener( 'resize', onWindowResize, false );
+  } //END init()
+
+	//animate shape
+	if (window.DeviceOrientationEvent){
+		window.addEventListener("deviceorientation", function(event){
+			// fromRotation.copy(group.quaternion);
+			// let rotateDegrees = Math.round(event.alpha);// alpha: rotation around z-axis
+			let leftToRight = Math.round(event.gamma);// gamma: left to right
+			let frontToBack = Math.round(event.beta)-35;// beta: front back motion (41 is assuming user is holding phone normally)
+
+			// handleOrientationAlpha(rotateDegrees);
+			handleOrientationGamma(leftToRight);
+			handleOrientationBeta(frontToBack);
+			//alpha (rotation: 0-360), beta (front-tilt to back-tilt: -90 to 90), gamma (left-tilt to right-tilt: -180 to 180)
+		}, false);
+	}
+
+	// var handleOrientationAlpha = function (rotateDegrees){
+  //
+	// };
+	function handleOrientationGamma(leftToRight){
+		if ((speedX * leftToRight) > 4){
+			currentRotX = 20;
+		} else if ((speedX*leftToRight) < 4){
+			currentRotX = (speedX * leftToRight)*5;
+		}
+	}
+	function handleOrientationBeta(frontToBack){
+		if ((speedY * frontToBack) > 5){
+			currentRotY = 5;
+		} else if ((speedY * frontToBack) < 5){
+			currentRotY = speedY * frontToBack;
+		}
+	}
+
+	// function update(){
+	// 	const percent = Math.abs(Math.sin(angle));
+	// 	angle += 0.01;
+  //
+	// 	THREE.Quaternion.slerp(fromRotation, toRotation, group.quaternion, percent);
+	// }
+
+	// function randomPoint() {
+	// 	return new THREE.Vector3( THREE.Math.randFloat( - 1, 1 ), THREE.Math.randFloat( - 1, 1 ), THREE.Math.randFloat( - 1, 1 ) );
+	// }
+
+	// Renders the scene and updates the render as needed.
+  function animate() {
+		// update();
+		requestAnimationFrame( animate );
+		render();
+  }
+
+	function render() {
+		// group.rotateOnAxis(y, currentRotY);
+		group2.rotation.y += currentRotX; //rotates left (-) and right (+)
+		group.rotation.x += currentRotY; //rotates up (-) and down (+)
+
+		// group.rotateOnAxis( 1, 1 ); // axis, angle
+		renderer.render( scene, camera );
+	}
+
+	function onWindowResize() {
+		camera.aspect = window.innerWidth / window.innerHeight;
+		camera.updateProjectionMatrix();
+
+		renderer.setSize( window.innerWidth, window.innerHeight );
+	}
+
+}//END isMobile
+// ]]>
+</script>
+</body>
+</html>
